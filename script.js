@@ -16,15 +16,14 @@ const studyModeElement = document.querySelector("#study-mode");
 const examModeElement = document.querySelector("#exam-mode");
 const correctPercent = document.querySelector("#correct-percent");
 const examProgress = document.querySelector("#exam-progress");
-const resultsModal = document.getElementById(".results-modal");
-let min = document.querySelector("#time").textContent.split(":")[0];
-let sec = document.querySelector("#time").textContent.split(":")[1];
+const resultsModal = document.querySelector(".results-modal");
+const timer = document.querySelector("#time");
 let timerId;
+const cardTemplate = document.querySelector("#word-stats");
+const time = document.querySelector("#timer");
 
-// При клике на карточку
 flipCard.addEventListener("click", () => {
-  // по клику переварачиваются карточки
-  flipCard.classList.toggle("active"); // добавили класс active
+  flipCard.classList.toggle("active");
 });
 
 class Words {
@@ -110,127 +109,124 @@ function startExam() {
   studyCards.classList.add("hidden");
 
   insertingTestCard();
+}
 
-  function randomCard(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
+function randomCard(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
   }
+  return array;
+}
 
-  function insertingTestCard() {
-    const fragment = new DocumentFragment();
-    const arrOfTestWords = [];
-    arrOfWords.forEach((item) => {
-      const cardWordElement = makeTestCard(item.englishWord, item.russianWord);
-      const cardTranslationElement = makeTestCard(
-        item.russianWord,
-        item.englishWord
-      );
+function makeTestCard(englishWord, russianWord) {
+  const cardElement = document.createElement("div");
+  cardElement.classList.add("card");
 
-      arrOfTestWords.push(cardWordElement);
-      arrOfTestWords.push(cardTranslationElement);
-    }),
-      randomCard(arrOfTestWords);
-    fragment.append(...arrOfTestWords);
-    examCards.innerHTML = "";
-    examCards.append(fragment);
+  const wordElement = document.createElement("div");
+  wordElement.classList.add("card-word");
+  wordElement.textContent = englishWord;
+
+  const translationElement = document.createElement("div");
+  translationElement.classList.add("card-translation");
+  translationElement.textContent = russianWord;
+
+  cardElement.append(wordElement);
+  cardElement.append(translationElement);
+  translationElement.classList.add("hidden");
+
+  return cardElement;
+}
+
+function insertingTestCard() {
+  const fragment = new DocumentFragment();
+  const arrOfTestWords = [];
+  arrOfWords.forEach((item) => {
+    const cardWordElement = makeTestCard(item.englishWord, item.russianWord);
+    const cardTranslationElement = makeTestCard(
+      item.russianWord,
+      item.englishWord
+    );
+
+    arrOfTestWords.push(cardWordElement);
+    arrOfTestWords.push(cardTranslationElement);
+  }),
+    randomCard(arrOfTestWords);
+  fragment.append(...arrOfTestWords);
+  examCards.innerHTML = "";
+  examCards.append(fragment);
+}
+
+let min = 0;
+let sec = 0;
+function timerStart() {
+  sec++;
+  if (sec === 60) {
+    min++;
+    sec = 0;
   }
+  timer.textContent = `${format(min)}:${format(sec)}`;
 
-  function makeTestCard(englishWord, russianWord) {
-    const cardElement = document.createElement("div");
-    cardElement.classList.add("card");
-
-    const wordElement = document.createElement("div");
-    wordElement.classList.add("card-word");
-    wordElement.textContent = englishWord;
-
-    const translationElement = document.createElement("div");
-    translationElement.classList.add("card-translation");
-    translationElement.textContent = russianWord;
-
-    cardElement.append(wordElement);
-    cardElement.append(translationElement);
-    translationElement.classList.add("hidden");
-
-    let firstClickedCard = null;
-    let correctAnswersCount = 0;
-    let curAnswer = 0;
-    let countAnswer = arrOfWords.length;
-
-    function timerStart() {
-      sec++;
-      if (sec === 60) {
-        min++;
-        sec = sec - 60;
-      }
-      console.log(min, sec);
-
-      function format(value) {
-        if (value < 10) {
-          return `0${value}`;
-        }
-        return value;
-      }
-      document.querySelector("#time").textContent = `${format(min)}:${format(
-        sec
-      )}`;
+  function format(value) {
+    if (value < 10) {
+      return `0${value}`;
     }
-
-    examCards.addEventListener("click", function (event) {
-      const cardElement = event.target.closest(".card");
-      timerId = setInterval(timerStart, 1000);
-
-      if (cardElement) {
-        if (firstClickedCard === null) {
-          firstClickedCard = cardElement;
-          firstClickedCard.classList.add("correct");
-        } else {
-          const firstCardWord =
-            firstClickedCard.querySelector(".card-word").textContent;
-          const secondCardWord =
-            cardElement.querySelector(".card-word").textContent;
-          const firstCardTranslation =
-            firstClickedCard.querySelector(".card-translation").textContent;
-          const secondCardTranslation =
-            cardElement.querySelector(".card-translation").textContent;
-
-          if (
-            (firstCardWord === secondCardTranslation &&
-              firstCardTranslation === secondCardWord) ||
-            (firstCardTranslation === secondCardWord &&
-              firstCardWord === secondCardTranslation)
-          ) {
-            cardElement.classList.add("correct");
-            firstClickedCard.classList.add("fade-out");
-            cardElement.classList.add("fade-out");
-            firstClickedCard = null;
-            correctAnswersCount++;
-            let percent = Math.round((correctAnswersCount / countAnswer) * 100);
-            correctPercent.textContent = `${percent}%`;
-            examProgress.value = percent;
-          } else {
-            cardElement.classList.add("wrong");
-
-            setTimeout(() => {
-              cardElement.classList.remove("wrong");
-              firstClickedCard.classList.remove("correct");
-              firstClickedCard = null;
-            }, 500);
-          }
-        }
-      }
-
-      if (correctAnswersCount === countAnswer) {
-        setTimeout(() => {
-          alert("Вы успешно прошли тестирование!");
-          const resulTime = clearInterval(timerId);
-          return resulTime;
-        }, 500);
-      }
-    });
-
-    return cardElement;
+    return value;
   }
 }
+timerId = setInterval(timerStart, 1000);
+
+let firstClickedCard = null;
+let correctAnswersCount = 0;
+const countAnswer = arrOfWords.length;
+
+examCards.addEventListener("click", function (event) {
+  const cardElement = event.target.closest(".card");
+
+  if (cardElement) {
+    if (firstClickedCard === null) {
+      firstClickedCard = cardElement;
+      firstClickedCard.classList.add("correct");
+    } else {
+      const firstCardWord = firstClickedCard.querySelector(".card-word");
+      const secondCardWord = cardElement.querySelector(".card-word");
+      const firstCardTranslation =
+        firstClickedCard.querySelector(".card-translation");
+      const secondCardTranslation =
+        cardElement.querySelector(".card-translation");
+
+      if (
+        (firstCardWord.textContent === secondCardTranslation.textContent &&
+          firstCardTranslation.textContent === secondCardWord.textContent) ||
+        (firstCardTranslation.textContent === secondCardWord.textContent &&
+          firstCardWord.textContent === secondCardTranslation.textContent)
+      ) {
+        cardElement.classList.add("correct");
+        firstClickedCard.classList.add("fade-out");
+        cardElement.classList.add("fade-out");
+        firstClickedCard = null;
+        correctAnswersCount++;
+        const percent = Math.round((correctAnswersCount / countAnswer) * 100);
+        correctPercent.textContent = `${percent}%`;
+        examProgress.value = percent;
+      } else {
+        cardElement.classList.add("wrong");
+
+        setTimeout(() => {
+          cardElement.classList.remove("wrong");
+          firstClickedCard.classList.remove("correct");
+          firstClickedCard = null;
+        }, 500);
+      }
+    }
+  }
+
+  if (correctAnswersCount === countAnswer) {
+    setTimeout(() => {
+      alert("Вы успешно прошли тестирование!");
+      clearInterval(timerId);
+      resultsModal.classList.remove("hidden");
+      time.textContent = `${timer.textContent}`;
+    }, 300);
+  }
+});
